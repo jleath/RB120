@@ -73,7 +73,7 @@ end
 
 class Player
   attr_accessor :score
-  attr_reader :move, :name
+  attr_reader :move, :name, :move_history
 
   def initialize
     set_name
@@ -95,6 +95,7 @@ class Player
     @move_history.each_index do |index|
       puts "\tRound #{index + 1}: #{@move_history[index]}"
     end
+    puts
   end
 end
 
@@ -177,11 +178,13 @@ class RPSGame
 
   def initialize
     @computer = COMPUTER_OPTIONS.sample.new
+    display_welcome_message
+    @human = Human.new
   end
 
   def display_welcome_message
+    system('clear') || system('cls')
     puts "Welcome to Rock, Paper, Scissors!"
-    @human = Human.new
   end
 
   def display_goodbye_message
@@ -191,6 +194,7 @@ class RPSGame
   def display_moves
     puts "#{human.name} chose #{human.move}."
     puts "#{computer.name} chose #{computer.move}."
+    puts
   end
 
   def determine_winner
@@ -214,12 +218,27 @@ class RPSGame
       puts last_winner.move.win_message(loser.move)
       puts "#{last_winner.name} won!"
     end
+    puts
+  end
+
+  def display_final_winner
+    if !game_over?
+      puts "#{human.name} has forfeited!"
+      puts "#{computer.name} is the grand champion!"
+    else
+      final_winner = human.score == MAX_SCORE ? human.name : computer.name
+      plural_round = MAX_SCORE > 1 ? 'rounds' : 'round'
+      puts "#{final_winner} has won #{MAX_SCORE} #{plural_round} " \
+          "and is the grand winner!"
+    end
+    puts
   end
 
   def display_score
     puts "First player to #{MAX_SCORE} wins!"
     puts "#{human.name}: #{human.score} points"
     puts "#{computer.name}: #{computer.score} points"
+    puts
   end
 
   def play_again?
@@ -228,10 +247,22 @@ class RPSGame
       puts "Would you like to play again or print the move history? (y/n/p)"
       answer = gets.chomp.downcase
       break if ['y', 'n'].include?(answer)
-      [human, computer].each(&:print_move_history) if answer == 'p'
+      refresh_screen
+      print_move_histories if answer == 'p'
       puts "Sorry, must be y, n, or p." unless answer == 'p'
     end
     answer.downcase == 'y'
+  end
+
+  def print_move_histories
+    [human, computer].each do |player|
+      puts "#{player.name}'s move history"
+      history = player.move_history
+      history.each_index do |index|
+        puts "\tRound #{index + 1}: #{history[index]}"
+      end
+      puts
+    end
   end
 
   def players_choose
@@ -248,21 +279,28 @@ class RPSGame
     last_winner != :tie && last_winner.score == MAX_SCORE
   end
 
-  def clear_screen
+  def refresh_screen
     system('cls') || system('clear')
     display_score
   end
 
+  def print_move_history
+    puts "#{name}'s move history"
+    @move_history.each_index do |index|
+      puts "\tRound #{index + 1}: #{@move_history[index]}"
+    end
+  end
+
   def play
-    display_welcome_message
     loop do
-      clear_screen
+      refresh_screen
       players_choose
-      clear_screen
+      refresh_screen
       display_moves
       display_winner
       break if game_over? || !play_again?
     end
+    display_final_winner
     display_goodbye_message
   end
 end
