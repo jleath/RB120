@@ -2,54 +2,101 @@
 class Move
   attr_reader :value
 
-  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-  WINNING_COMBOS = {
-    'rock' => ['scissors', 'lizard'],
-    'paper' => ['rock', 'spock'],
-    'scissors' => ['paper', 'lizard'],
-    'lizard' => ['spock', 'paper'],
-    'spock' => ['scissors', 'rock']
-  }
-  WIN_MESSAGES = {
-    'scissorspaper' => 'Scissors cuts paper!',
-    'paperrock' => 'Paper covers rock!',
-    'rocklizard' => 'Rock crushes lizard!',
-    'lizardspock' => 'Lizard poisons Spock!',
-    'spockscissors' => 'Spock smashes scissors',
-    'scissorslizard' => 'Scissors decapitates lizard!',
-    'lizardpaper' => 'Lizard eats paper!',
-    'paperspock' => 'Paper disproves Spock!',
-    'spockrock' => 'Spock vaporizes Rock!',
-    'rockscissors' => 'Rock crushes scissors!'
-  }
+  include Comparable
 
-  def initialize(value)
-    @value = value
-  end
-
-  def self.win_message(move1, move2)
-    WIN_MESSAGES[move1.value + move2.value]
-  end
-
-  def >(other_move)
-    WINNING_COMBOS[@value].include?(other_move.value)
-  end
-
-  def <(other_move)
-    other_move > self
+  def win_message(loser)
+    @win_messages[loser.class]
   end
 
   def to_s
     @value
   end
+
+  def <=>(other)
+    return 1 if win_messages.key?(other.class)
+    return -1 if other.win_messages.key?(self.class)
+    0
+  end
+
+  protected
+
+  attr_reader :win_messages
+end
+
+class Rock < Move
+  def initialize
+    @value = 'rock'
+    @win_messages = {
+      Lizard => 'Rock crushes lizard!',
+      Scissors => 'Rock crushes scissors!'
+    }
+  end
+end
+
+class Paper < Move
+  def initialize
+    @value = 'paper'
+    @win_messages = {
+      Rock => 'Paper covers rock!',
+      Spock => 'Paper disproves Spock!'
+    }
+  end
+end
+
+class Scissors < Move
+  def initialize
+    @value = 'scissors'
+    @win_messages = {
+      Paper => 'Scissors cuts paper!',
+      Lizard => 'Scissors decapitates lizard!'
+    }
+  end
+end
+
+class Lizard < Move
+  def initialize
+    @value = 'lizard'
+    @win_messages = {
+      Spock => 'Lizard poisons Spock!',
+      Paper => 'Lizard eats paper!'
+    }
+  end
+end
+
+class Spock < Move
+  def initialize
+    @value = 'spock'
+    @win_messages = {
+      Rock => 'Spock vaporizes rock!',
+      Scissors => 'Spock smashes scissors!'
+    }
+  end
 end
 
 class Player
-  attr_accessor :move, :name, :score
+  attr_accessor :name, :score
+  attr_reader :move
 
   def initialize
     set_name
     @score = 0
+    @move_history = []
+  end
+
+  def move=(move)
+    update_move_history(move)
+    @move = move
+  end
+
+  def update_move_history(move)
+    @move_history << move
+  end
+
+  def print_move_history
+    puts "#{name}'s move history"
+    @move_history.each_index do |index|
+      puts "\tRound #{index + 1}: #{@move_history[index]}"
+    end
   end
 end
 
@@ -65,43 +112,78 @@ class Human < Player
     self.name = n
   end
 
-  def choose
+  def choose(options)
     choice = nil
+    move_strings = options.map(&:to_s)
     loop do
-      options_str = Move::VALUES.join(', ')
+      options_str = options.join(', ')
       puts "Please choose #{options_str}:"
-      choice = gets.chomp
-      break if Move::VALUES.include?(choice)
+      choice = gets.chomp.downcase
+      break if move_strings.include?(choice)
       puts "Sorry, invalid choice."
     end
-    self.move = Move.new(choice)
+    self.move = options[move_strings.find_index(choice)]
   end
 end
 
 class Computer < Player
-  def set_name
-    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+  attr_reader :name
+
+  def choose(options)
+    self.move = choose_strategy(options)
   end
 
-  def choose
-    self.move = Move.new(Move::VALUES.sample)
+  def choose_strategy(options)
+    options.sample
+  end
+end
+
+class Hal < Computer
+  def set_name
+    self.name = 'Hal'
+  end
+end
+
+class R2d2 < Computer
+  def set_name
+    self.name = 'R2D2'
+  end
+end
+
+class Chappie < Computer
+  def set_name
+    self.name = 'Chappie'
+  end
+end
+
+class Sonny < Computer
+  def set_name
+    self.name = 'Sonny'
+  end
+end
+
+class Number5 < Computer
+  def set_name
+    self.name = 'Number 5'
   end
 end
 
 class RPSGame
   attr_accessor :human, :computer, :last_winner
 
+  MOVE_OPTIONS = [Rock.new, Paper.new, Scissors.new, Lizard.new, Spock.new]
+  COMPUTER_OPTIONS = [Hal, R2d2, Chappie, Sonny, Number5]
+
   MAX_SCORE = 10
   SLEEP_TIME = 1.5
 
   def initialize
-    system('clear') || system('cls')
-    @human = Human.new
-    @computer = Computer.new
+    @computer = COMPUTER_OPTIONS.sample.new
   end
 
   def display_welcome_message
     puts "Welcome to Rock, Paper, Scissors!"
+    @human = Human.new
   end
 
   def display_goodbye_message
@@ -131,7 +213,7 @@ class RPSGame
       puts "It's a tie!"
     else
       loser = last_winner == human ? computer : human
-      puts Move.win_message(last_winner.move, loser.move)
+      puts last_winner.move.win_message(loser.move)
       puts "#{last_winner.name} won!"
     end
   end
@@ -145,22 +227,23 @@ class RPSGame
   def play_again?
     answer = nil
     loop do
-      puts "Would you like to play again? (y/n)"
-      answer = gets.chomp
-      break if ['y', 'n'].include?(answer.downcase)
-      puts "Sorry, must be y or n."
+      puts "Would you like to play again or print the move history? (y/n/p)"
+      answer = gets.chomp.downcase
+      break if ['y', 'n'].include?(answer)
+      [human, computer].each(&:print_move_history) if answer == 'p'
+      puts "Sorry, must be y, n, or p." unless answer == 'p'
     end
     answer.downcase == 'y'
   end
 
   def players_choose
-    human.choose
+    human.choose(MOVE_OPTIONS)
     print "#{computer.name} is thinking"
     3.times do
       print "."
       sleep(SLEEP_TIME / 3)
     end
-    computer.choose
+    computer.choose(MOVE_OPTIONS)
   end
 
   def game_over?
