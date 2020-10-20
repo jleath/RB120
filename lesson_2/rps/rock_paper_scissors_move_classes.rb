@@ -1,46 +1,74 @@
 # Game Orchestration Engine
 class Move
   attr_reader :value
+  include Comparable
 
-  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-  WINNING_COMBOS = {
-    'rock' => ['scissors', 'lizard'],
-    'paper' => ['rock', 'spock'],
-    'scissors' => ['paper', 'lizard'],
-    'lizard' => ['spock', 'paper'],
-    'spock' => ['scissors', 'rock']
-  }
-  WIN_MESSAGES = {
-    'scissorspaper' => 'Scissors cuts paper!',
-    'paperrock' => 'Paper covers rock!',
-    'rocklizard' => 'Rock crushes lizard!',
-    'lizardspock' => 'Lizard poisons Spock!',
-    'spockscissors' => 'Spock smashes scissors',
-    'scissorslizard' => 'Scissors decapitates lizard!',
-    'lizardpaper' => 'Lizard eats paper!',
-    'paperspock' => 'Paper disproves Spock!',
-    'spockrock' => 'Spock vaporizes Rock!',
-    'rockscissors' => 'Rock crushes scissors!'
-  }
-
-  def initialize(value)
-    @value = value
-  end
-
-  def self.win_message(move1, move2)
-    WIN_MESSAGES[move1.value + move2.value]
-  end
-
-  def >(other_move)
-    WINNING_COMBOS[@value].include?(other_move.value)
-  end
-
-  def <(other_move)
-    other_move > self
+  def win_message(loser)
+    @win_messages[loser.class]
   end
 
   def to_s
     @value
+  end
+
+  def <=>(other)
+    return 1 if win_messages.has_key?(other.class)
+    return -1 if other.win_messages.has_key?(self.class)
+    0
+  end
+
+  protected
+
+  attr_reader :win_messages
+end
+
+class Rock < Move
+  def initialize
+    @value = 'rock'
+    @win_messages = {
+      Lizard => 'Rock crushes lizard!',
+      Scissors => 'Rock crushes scissors!'
+    }
+  end
+end
+
+class Paper < Move
+  def initialize
+    @value = 'paper'
+    @win_messages = {
+      Rock => 'Paper covers rock!',
+      Spock => 'Paper disproves Spock!'
+    }
+  end
+end
+
+class Scissors < Move
+  def initialize
+    @value = 'scissors'
+    @win_messages = {
+      Paper => 'Scissors cuts paper!',
+      Lizard => 'Scissors decapitates lizard!'
+    }
+  end
+end
+
+class Lizard < Move
+  def initialize
+    @value = 'lizard'
+    @win_messages = {
+      Spock => 'Lizard poisons Spock!',
+      Paper => 'Lizard eats paper!'
+    }
+  end
+end
+
+class Spock < Move
+  def initialize
+    @value = 'spock'
+    @win_messages = {
+      Rock => 'Spock vaporizes rock!',
+      Scissors => 'Spock smashes scissors!'
+    }
   end
 end
 
@@ -65,16 +93,17 @@ class Human < Player
     self.name = n
   end
 
-  def choose
+  def choose(options)
     choice = nil
+    move_strings = options.map(&:to_s)
     loop do
-      options_str = Move::VALUES.join(', ')
+      options_str = options.join(', ')
       puts "Please choose #{options_str}:"
-      choice = gets.chomp
-      break if Move::VALUES.include?(choice)
+      choice = gets.chomp.downcase
+      break if move_strings.include?(choice)
       puts "Sorry, invalid choice."
     end
-    self.move = Move.new(choice)
+    self.move = options[move_strings.find_index(choice)]
   end
 end
 
@@ -83,19 +112,19 @@ class Computer < Player
     self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
   end
 
-  def choose
-    self.move = Move.new(Move::VALUES.sample)
+  def choose(options)
+    self.move = options.sample
   end
 end
 
 class RPSGame
   attr_accessor :human, :computer, :last_winner
+  MOVE_OPTIONS = [Rock.new, Paper.new, Scissors.new, Lizard.new, Spock.new]
 
   MAX_SCORE = 10
   SLEEP_TIME = 1.5
 
   def initialize
-    system('clear') || system('cls')
     @human = Human.new
     @computer = Computer.new
   end
@@ -131,7 +160,7 @@ class RPSGame
       puts "It's a tie!"
     else
       loser = last_winner == human ? computer : human
-      puts Move.win_message(last_winner.move, loser.move)
+      puts last_winner.move.win_message(loser.move)
       puts "#{last_winner.name} won!"
     end
   end
@@ -154,13 +183,13 @@ class RPSGame
   end
 
   def players_choose
-    human.choose
+    human.choose(MOVE_OPTIONS)
     print "#{computer.name} is thinking"
     3.times do
       print "."
       sleep(SLEEP_TIME / 3)
     end
-    computer.choose
+    computer.choose(MOVE_OPTIONS)
   end
 
   def game_over?
