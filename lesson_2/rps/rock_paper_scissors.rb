@@ -1,7 +1,5 @@
 # Game Orchestration Engine
 class Move
-  attr_reader :value
-
   include Comparable
 
   def win_message(loser)
@@ -74,8 +72,8 @@ class Spock < Move
 end
 
 class Player
-  attr_accessor :name, :score
-  attr_reader :move
+  attr_accessor :score
+  attr_reader :move, :name
 
   def initialize
     set_name
@@ -109,7 +107,7 @@ class Human < Player
       break unless n.empty?
       puts "Sorry, must enter a value."
     end
-    self.name = n
+    @name = n
   end
 
   def choose(options)
@@ -140,31 +138,31 @@ end
 
 class Hal < Computer
   def set_name
-    self.name = 'Hal'
+    @name = 'Hal'
   end
 end
 
 class R2d2 < Computer
   def set_name
-    self.name = 'R2D2'
+    @name = 'R2D2'
   end
 end
 
 class Chappie < Computer
   def set_name
-    self.name = 'Chappie'
+    @name = 'Chappie'
   end
 end
 
 class Sonny < Computer
   def set_name
-    self.name = 'Sonny'
+    @name = 'Sonny'
   end
 end
 
 class Number5 < Computer
   def set_name
-    self.name = 'Number 5'
+    @name = 'Number 5'
   end
 end
 
