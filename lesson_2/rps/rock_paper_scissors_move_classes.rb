@@ -1,6 +1,7 @@
 # Game Orchestration Engine
 class Move
   attr_reader :value
+
   include Comparable
 
   def win_message(loser)
@@ -12,8 +13,8 @@ class Move
   end
 
   def <=>(other)
-    return 1 if win_messages.has_key?(other.class)
-    return -1 if other.win_messages.has_key?(self.class)
+    return 1 if win_messages.key?(other.class)
+    return -1 if other.win_messages.key?(self.class)
     0
   end
 
@@ -73,11 +74,29 @@ class Spock < Move
 end
 
 class Player
-  attr_accessor :move, :name, :score
+  attr_accessor :name, :score
+  attr_reader :move
 
   def initialize
     set_name
     @score = 0
+    @move_history = []
+  end
+
+  def move=(move)
+    update_move_history(move)
+    @move = move
+  end
+
+  def update_move_history(move)
+    @move_history << move
+  end
+
+  def print_move_history
+    puts "#{name}'s move history"
+    @move_history.each_index do |index|
+      puts "\tRound #{index + 1}: #{@move_history[index]}"
+    end
   end
 end
 
@@ -119,18 +138,19 @@ end
 
 class RPSGame
   attr_accessor :human, :computer, :last_winner
+
   MOVE_OPTIONS = [Rock.new, Paper.new, Scissors.new, Lizard.new, Spock.new]
 
   MAX_SCORE = 10
   SLEEP_TIME = 1.5
 
   def initialize
-    @human = Human.new
     @computer = Computer.new
   end
 
   def display_welcome_message
     puts "Welcome to Rock, Paper, Scissors!"
+    @human = Human.new
   end
 
   def display_goodbye_message
@@ -174,10 +194,11 @@ class RPSGame
   def play_again?
     answer = nil
     loop do
-      puts "Would you like to play again? (y/n)"
-      answer = gets.chomp
-      break if ['y', 'n'].include?(answer.downcase)
-      puts "Sorry, must be y or n."
+      puts "Would you like to play again or print the move history? (y/n/p)"
+      answer = gets.chomp.downcase
+      break if ['y', 'n'].include?(answer)
+      [human, computer].each(&:print_move_history) if answer == 'p'
+      puts "Sorry, must be y, n, or p." unless answer == 'p'
     end
     answer.downcase == 'y'
   end
