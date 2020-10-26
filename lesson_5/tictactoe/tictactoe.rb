@@ -139,8 +139,18 @@ class TTTGame
     display_board
   end
 
+  def joinor(arr, delim = ', ', join_word = 'or')
+    arr = arr[0..-1]
+    if arr.size <= 2
+      arr.join(" #{join_word} ")
+    else
+      arr[-1] = "#{join_word} #{arr[-1]}"
+      arr.join(delim)
+    end
+  end
+
   def human_moves
-    puts "Choose a square (#{board.unmarked_keys.join(', ')}): "
+    puts "Choose a square (#{joinor(board.unmarked_keys)}): "
     square = nil
     loop do
       square = gets.chomp.to_i
