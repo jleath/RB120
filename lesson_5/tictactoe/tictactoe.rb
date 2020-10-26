@@ -1,3 +1,79 @@
+class Firework
+  attr_reader :delay, :height
+
+  def initialize(delay, height)
+    @delay = delay
+    @height = height
+  end
+end
+
+class FireworksAnimation
+  FIREWORKS = [[' ', ' ', ' ', ' ', '.', '*', '%', '*', '%', '.'],
+               [' ', ' ', ' ', '.', ' ', ' ', ' ', ' ', ' ', ' '],
+               [' ', ' ', '.', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+               [' ', '.', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+               ['.', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']].freeze
+
+  NUM_FIREWORKS = 15
+  MAX_FIREWORKS_DELAY = 30
+  FIREWORKS_COLUMNS = 23
+  MIN_FIREWORK_HEIGHT = 3
+  MAX_FIREWORK_HEIGHT = 5
+  ANIMATION_FRAMES = FIREWORKS[0].size
+  ANIMATION_LINES = FIREWORKS.size
+  ANIMATION_REFRESH = 0.1
+
+  def initialize
+    generate_fireworks
+    @animation_rows = [' ' * FIREWORKS_COLUMNS] * MAX_FIREWORK_HEIGHT
+    @total_num_frames = MAX_FIREWORKS_DELAY + ANIMATION_FRAMES
+  end
+
+  def display
+    (0...@total_num_frames).each do |curr_frame|
+      update_animation!(curr_frame)
+      puts @animation_rows
+      puts '  Congratulations!!'
+      puts 'You are the champion!'
+      sleep(ANIMATION_REFRESH)
+      system('clear') || system('cls')
+    end
+  end
+
+  private
+
+  def generate_fireworks
+    # seeding the fireworks sequence to make sure that the random
+    # number generation doesn't make us wait to long to see frames
+    @fireworks_info = {}
+    NUM_FIREWORKS.times do
+      column_no = rand(FIREWORKS_COLUMNS)
+      delay = rand(MAX_FIREWORKS_DELAY)
+      height = rand(MIN_FIREWORK_HEIGHT..MAX_FIREWORK_HEIGHT)
+      @fireworks_info[column_no] = Firework.new(delay, height)
+    end
+  end
+
+  def update_animation!(curr_frame)
+    @animation_rows.each_index do |line_no|
+      @animation_rows[line_no] =
+        update_animation_row(line_no, curr_frame)
+    end
+  end
+
+  def update_animation_row(line_no, curr_frame)
+    result = ' ' * FIREWORKS_COLUMNS
+    @fireworks_info.each do |column, firework|
+      frame = curr_frame - firework.delay
+      line = line_no - (MAX_FIREWORK_HEIGHT - firework.height)
+      next unless frame.between?(0, ANIMATION_FRAMES - 1)
+      next unless line.between?(0, ANIMATION_LINES - 1)
+      result[column] = FIREWORKS[line][frame]
+    end
+    result
+  end
+end
+
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
@@ -121,22 +197,45 @@ class TTTGame
 
   private
 
+  def display(msg, newline: true)
+    if newline
+      puts "> #{msg}"
+    else
+      print "> #{msg}"
+    end
+  end
+
   def display_welcome_message
-    puts "Welcome to Tic Tac Toe!"
-    puts ""
+    display("Welcome to TicTacToe!")
+    display("The first player to win #{SCORE_LIMIT} rounds is the champion.")
+    display("Press Enter when you are ready to begin!", newline: false)
+    gets
   end
 
   def clear_screen
     system('clear') || system('cls')
   end
 
+  def get_winner_indicator(left_score, right_score)
+    if left_score < right_score
+      '-|>'
+    elsif left_score > right_score
+      '<|-'
+    else
+      '-|-'
+    end
+  end
+
   def display_scoreboard
-    puts "You're a #{human.marker}. Computer is a #{computer.marker}."
+    winner_indicator = get_winner_indicator(human.score, computer.score)
+    puts(' TIC   TAC   TOE')
+    puts('------------------')
+    puts('player    computer')
+    puts("  #{human.score}    #{winner_indicator}    #{computer.score}")
   end
 
   def display_board
     display_scoreboard
-    puts ""
     board.draw
     puts ""
   end
@@ -157,13 +256,13 @@ class TTTGame
   end
 
   def human_moves
-    puts "Choose a square (#{joinor(board.unmarked_keys)}): "
     square = nil
     loop do
+      display("Choose a square (#{joinor(board.unmarked_keys)})")
       square = gets.chomp.to_i
       break if board.unmarked_keys.include?(square)
 
-      puts "Sorry, that's not a valid choice."
+      display("Sorry, that is not a valid choice. Please try again.")
     end
     board[square] = human.marker
   end
@@ -183,9 +282,9 @@ class TTTGame
   def display_result
     clear_screen_and_display_board
     case board.winning_marker
-    when human.marker then puts "You won!"
-    when computer.marker then puts "Computer won!"
-    else puts "It's a tie!"
+    when human.marker then display("You won!")
+    when computer.marker then display("Computer won!")
+    else display("It's a tie!")
     end
   end
 
@@ -195,14 +294,15 @@ class TTTGame
 
   def display_champion
     if at_score_limit?(human)
-      puts "You are the champion!"
+      clear_screen
+      FireworksAnimation.new.display
     else
-      puts "The computer is the champion!"
+      display("You lose! The computer is the champion!")
     end
   end
 
   def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+    display("Thanks for playing Tic Tac Toe! Goodbye!")
   end
 
   def reset_board
@@ -212,7 +312,7 @@ class TTTGame
   end
 
   def display_play_again_message
-    puts "Let's play again!"
+    display("Let's play again!")
     puts ""
   end
 
@@ -226,8 +326,10 @@ class TTTGame
 
   def current_player_moves
     if human_turn?
+      display("Player's turn")
       human_moves
     else
+      display("Computer's turn")
       computer_moves
     end
     switch_player
@@ -248,15 +350,16 @@ class TTTGame
   def play_again?
     answer = nil
     loop do
-      puts "Would you like to continue? (y/n)"
+      display("Would you like to continue? (y/n): ", newline: false)
       answer = gets.chomp.downcase
       break if %w(y n).include?(answer)
-      puts "Sorry, must be y or n."
+      display("Sorry, must be y or n.")
     end
     answer == 'y'
   end
 
   def main_game
+    clear_screen
     loop do
       play_round
       break if game_over?
