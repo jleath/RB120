@@ -163,28 +163,28 @@ class TTTGame
     answer == 'y'
   end
 
+  def reset
+    board.reset
+    clear_screen
+    puts "Let's play again!"
+    puts ""
+  end
+
   def play
     clear_screen
     display_welcome_message
-
     loop do
       display_board
-
       loop do
         human_moves
         break if board.someone_won? || board.full?
-
         computer_moves
         break if board.someone_won? || board.full?
-
         clear_screen_and_display_board
       end
       display_result
       break unless play_again?
-      board.reset
-      clear_screen
-      puts "Let's play again!"
-      puts ""
+      reset
     end
 
     display_goodbye_message
