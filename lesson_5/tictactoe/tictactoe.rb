@@ -26,7 +26,7 @@ class Board
   end
 
   def someone_won?
-    !!detect_winner
+    !!winning_marker
   end
 
   def count_markers(markers, search_marker)
@@ -34,7 +34,7 @@ class Board
   end
 
   # returns winning marker or nil
-  def detect_winner
+  def winning_marker
     WINNING_LINES.each do |line|
       markers = @squares.values_at(*line).map(&:marker)
       if markers.count(TTTGame::HUMAN_MARKER) == 3
@@ -138,7 +138,7 @@ class TTTGame
   def display_result
     clear_screen_and_display_board
 
-    case board.detect_winner
+    case board.winning_marker
     when human.marker
       puts "You won!"
     when computer.marker
