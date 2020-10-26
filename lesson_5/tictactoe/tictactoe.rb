@@ -164,7 +164,7 @@ class TTTGame
     display_welcome_message
 
     loop do
-      display_board(false)
+      display_board(clear: false)
 
       loop do
         human_moves
