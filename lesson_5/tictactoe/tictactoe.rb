@@ -136,7 +136,7 @@ class TTTGame
   end
 
   def display_result
-    display_board
+    clear_screen_and_display_board
 
     case board.detect_winner
     when human.marker
@@ -168,7 +168,7 @@ class TTTGame
     display_welcome_message
 
     loop do
-      clear_screen_and_display_board
+      display_board
 
       loop do
         human_moves
@@ -177,7 +177,7 @@ class TTTGame
         computer_moves
         break if board.someone_won? || board.full?
 
-        display_board
+        clear_screen_and_display_board
       end
       display_result
       break unless play_again?
