@@ -166,6 +166,9 @@ class TTTGame
   def reset
     board.reset
     clear_screen
+  end
+
+  def display_play_again_message
     puts "Let's play again!"
     puts ""
   end
@@ -185,6 +188,7 @@ class TTTGame
       display_result
       break unless play_again?
       reset
+      display_play_again_message
     end
 
     display_goodbye_message
