@@ -174,23 +174,18 @@ class TTTGame
   end
 
   def update_scores
-    winning_marker = board.winning_marker
-    if winning_marker == human.marker
-      human.score += 1
-    elsif winning_marker == computer.marker
-      computer.score += 1
+    case board.winning_marker
+    when human.marker then human.score += 1
+    when computer.marker then computer.score += 1
     end
   end
 
   def display_result
     clear_screen_and_display_board
     case board.winning_marker
-    when human.marker
-      puts "You won!"
-    when computer.marker
-      puts "Computer won!"
-    else
-      puts "It's a tie!"
+    when human.marker then puts "You won!"
+    when computer.marker then puts "Computer won!"
+    else puts "It's a tie!"
     end
   end
 
@@ -210,7 +205,7 @@ class TTTGame
     puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 
-  def reset
+  def reset_board
     board.reset
     @curr_marker = FIRST_TO_MOVE
     clear_screen
@@ -261,26 +256,12 @@ class TTTGame
     answer == 'y'
   end
 
-  # display welcome message
-  # start the game
-  # display the scoreboard
-  # display the board
-  # each player takes their turn until the round is completed
-  # if either player has the winning number of points,
-  #  end the game and display champion
-  # otherwise
-  #   if the player lost the round, ask if they would like to forfeit
-  #   if the player won the round, ask if they would like to continue
-  #   if the player chooses to continue, start the next round
-  #   otherwise
-  #     the computer is automatically the champion and the game ends
-  # TODO: implement some kind of scoreboard
   def main_game
     loop do
       play_round
       break if game_over?
       break unless play_again?
-      reset
+      reset_board
       display_play_again_message
     end
     display_champion
