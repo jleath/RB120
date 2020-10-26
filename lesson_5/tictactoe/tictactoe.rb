@@ -1,38 +1,49 @@
+require 'pry'
 class Firework
-  attr_reader :delay, :height
+  SPRITES = ['.', '.', '.', '.', '.', '*', '%', '*', '%', '.']
+  ANIMATION_HEIGHTS = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0]
+  MIN_HEIGHT = 3
+  MAX_HEIGHT = 5
+  MAX_DELAY = 30
+  NUM_FRAMES = SPRITES.size
+  attr_reader :delay, :height, :x_position
 
-  def initialize(delay, height)
-    @delay = delay
-    @height = height
+  def initialize(img_width)
+    @x_position = rand(img_width)
+    @delay = rand(MAX_DELAY)
+    @height = rand(MIN_HEIGHT..MAX_HEIGHT)
+  end
+
+  def active?(frame)
+    sprite_frame = frame - @delay
+    (0...SPRITES.size).include?(sprite_frame)
+  end
+
+  def animation_sprite(frame)
+    sprite_frame = frame - @delay
+    SPRITES[sprite_frame]
+  end
+
+  def animation_height(frame)
+    sprite_frame = frame - @delay
+    ANIMATION_HEIGHTS[sprite_frame]
   end
 end
 
 class FireworksAnimation
-  FIREWORKS = [[' ', ' ', ' ', ' ', '.', '*', '%', '*', '%', '.'],
-               [' ', ' ', ' ', '.', ' ', ' ', ' ', ' ', ' ', ' '],
-               [' ', ' ', '.', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-               [' ', '.', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-               ['.', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']].freeze
-
   NUM_FIREWORKS = 15
-  MAX_FIREWORKS_DELAY = 30
   FIREWORKS_COLUMNS = 23
-  MIN_FIREWORK_HEIGHT = 3
-  MAX_FIREWORK_HEIGHT = 5
-  ANIMATION_FRAMES = FIREWORKS[0].size
-  ANIMATION_LINES = FIREWORKS.size
   ANIMATION_REFRESH = 0.1
 
   def initialize
-    generate_fireworks
-    @animation_rows = [' ' * FIREWORKS_COLUMNS] * MAX_FIREWORK_HEIGHT
-    @total_num_frames = MAX_FIREWORKS_DELAY + ANIMATION_FRAMES
+    @fireworks = generate_fireworks
+    @total_num_frames = Firework::MAX_DELAY + Firework::NUM_FRAMES
   end
 
   def display
     (0...@total_num_frames).each do |curr_frame|
-      update_animation!(curr_frame)
-      puts @animation_rows
+      sprite_map = update_animation(curr_frame)
+      puts sprite_map
       puts '  Congratulations!!'
       puts 'You are the champion!'
       sleep(ANIMATION_REFRESH)
@@ -43,32 +54,20 @@ class FireworksAnimation
   private
 
   def generate_fireworks
-    # seeding the fireworks sequence to make sure that the random
-    # number generation doesn't make us wait to long to see frames
-    @fireworks_info = {}
-    NUM_FIREWORKS.times do
-      column_no = rand(FIREWORKS_COLUMNS)
-      delay = rand(MAX_FIREWORKS_DELAY)
-      height = rand(MIN_FIREWORK_HEIGHT..MAX_FIREWORK_HEIGHT)
-      @fireworks_info[column_no] = Firework.new(delay, height)
-    end
+    result = []
+    NUM_FIREWORKS.times { result << Firework.new(FIREWORKS_COLUMNS) }
+    result
   end
 
-  def update_animation!(curr_frame)
-    @animation_rows.each_index do |line_no|
-      @animation_rows[line_no] =
-        update_animation_row(line_no, curr_frame)
-    end
-  end
-
-  def update_animation_row(line_no, curr_frame)
-    result = ' ' * FIREWORKS_COLUMNS
-    @fireworks_info.each do |column, firework|
-      frame = curr_frame - firework.delay
-      line = line_no - (MAX_FIREWORK_HEIGHT - firework.height)
-      next unless frame.between?(0, ANIMATION_FRAMES - 1)
-      next unless line.between?(0, ANIMATION_LINES - 1)
-      result[column] = FIREWORKS[line][frame]
+  def update_animation(curr_frame)
+    result = []
+    Firework::MAX_HEIGHT.times { result << ' ' * FIREWORKS_COLUMNS }
+    @fireworks.each do |firework|
+      x_pos = firework.x_position
+      y_pos = firework.animation_height(curr_frame)
+      if firework.active?(curr_frame)
+        result[y_pos][x_pos] = firework.animation_sprite(curr_frame)
+      end
     end
     result
   end
@@ -177,7 +176,7 @@ class TTTGame
   HUMAN_MARKER = 'X'
   COMPUTER_MARKER = 'O'
   FIRST_TO_MOVE = HUMAN_MARKER
-  SCORE_LIMIT = 2
+  SCORE_LIMIT = 1
 
   attr_reader :board, :human, :computer
 
