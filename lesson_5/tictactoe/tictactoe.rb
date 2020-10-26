@@ -89,9 +89,11 @@ end
 
 class Player
   attr_reader :marker
+  attr_accessor :score
 
   def initialize(marker)
     @marker = marker
+    @score = 0
   end
 end
 
@@ -99,14 +101,17 @@ class TTTGame
   HUMAN_MARKER = 'X'
   COMPUTER_MARKER = 'O'
   FIRST_TO_MOVE = HUMAN_MARKER
+  SCORE_LIMIT = 2
 
   attr_reader :board, :human, :computer
+  attr_accessor :last_winner
 
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
     @curr_marker = FIRST_TO_MOVE
+    @last_winner = nil
   end
 
   def play
@@ -166,32 +171,37 @@ class TTTGame
     board[square] = computer.marker
   end
 
+  def determine_winner
+    self.last_winner = case board.winning_marker
+                       when HUMAN_MARKER then human
+                       when COMPUTER_MARKER then computer
+                       else :tie
+                       end
+    last_winner.score += 1
+  end
+
   def display_result
     clear_screen_and_display_board
-
-    case board.winning_marker
-    when human.marker
+    determine_winner
+    if last_winner == human
       puts "You won!"
-    when computer.marker
+    elsif last_winner == computer
       puts "Computer won!"
     else
       puts "It's a tie!"
     end
   end
 
-  def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+  def display_champion
+    if last_winner == human
+      puts "You are the champion!"
+    else
+      puts "The computer is the champion!"
+    end
   end
 
-  def play_again?
-    answer = nil
-    loop do
-      puts "Would you like to play again? (y/n)"
-      answer = gets.chomp.downcase
-      break if %w(y n).include?(answer)
-      puts "Sorry, must be y or n"
-    end
-    answer == 'y'
+  def display_goodbye_message
+    puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 
   def reset
@@ -230,16 +240,57 @@ class TTTGame
     end
   end
 
+  def game_over?
+    return true if last_winner != :tie && last_winner.score == SCORE_LIMIT
+    if user_forfeit?
+      self.last_winner = computer
+      true
+    else
+      false
+    end
+  end
+
+  def user_forfeit?
+    answer = nil
+    message = last_winner == human ? "" : " after that humiliating defeat"
+    loop do
+      puts "Would you like to continue#{message}? (y/n)"
+      answer = gets.chomp.downcase
+      break if %w(y n).include?(answer)
+      puts "Sorry, must be y or n."
+    end
+    answer == 'n'
+  end
+
+  # display welcome message
+  # start the game
+  # display the scoreboard
+  # display the board
+  # each player takes their turn until the round is completed
+  # if either player has the winning number of points, 
+  #  end the game and display champion
+  # otherwise
+  #   if the player lost the round, ask if they would like to forfeit
+  #   if the player won the round, ask if they would like to continue
+  #   if the player chooses to continue, start the next round
+  #   otherwise
+  #     the computer is automatically the champion and the game ends
+  # TODO: implement some kind of scoreboard
   def main_game
     loop do
-      display_board
-      player_move
-      display_result
-      break unless play_again?
+      play_round
+      break if game_over?
       reset
       display_play_again_message
     end
+    display_champion
   end
+end
+
+def play_round
+  display_board
+  player_move
+  display_result
 end
 
 game = TTTGame.new
