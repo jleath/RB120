@@ -104,14 +104,12 @@ class TTTGame
   SCORE_LIMIT = 2
 
   attr_reader :board, :human, :computer
-  attr_accessor :last_winner
 
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
     @curr_marker = FIRST_TO_MOVE
-    @last_winner = nil
   end
 
   def play
@@ -132,8 +130,12 @@ class TTTGame
     system('clear') || system('cls')
   end
 
-  def display_board
+  def display_scoreboard
     puts "You're a #{human.marker}. Computer is a #{computer.marker}."
+  end
+
+  def display_board
+    display_scoreboard
     puts ""
     board.draw
     puts ""
@@ -171,29 +173,33 @@ class TTTGame
     board[square] = computer.marker
   end
 
-  def determine_winner
-    self.last_winner = case board.winning_marker
-                       when HUMAN_MARKER then human
-                       when COMPUTER_MARKER then computer
-                       else :tie
-                       end
-    last_winner.score += 1
+  def update_scores
+    winning_marker = board.winning_marker
+    if winning_marker == human.marker
+      human.score += 1
+    elsif winning_marker == computer.marker
+      computer.score += 1
+    end
   end
 
   def display_result
     clear_screen_and_display_board
-    determine_winner
-    if last_winner == human
+    case board.winning_marker
+    when human.marker
       puts "You won!"
-    elsif last_winner == computer
+    when computer.marker
       puts "Computer won!"
     else
       puts "It's a tie!"
     end
   end
 
+  def at_score_limit?(player)
+    player.score == SCORE_LIMIT
+  end
+
   def display_champion
-    if last_winner == human
+    if at_score_limit?(human)
       puts "You are the champion!"
     else
       puts "The computer is the champion!"
@@ -241,25 +247,18 @@ class TTTGame
   end
 
   def game_over?
-    return true if last_winner != :tie && last_winner.score == SCORE_LIMIT
-    if user_forfeit?
-      self.last_winner = computer
-      true
-    else
-      false
-    end
+    at_score_limit?(human) || at_score_limit?(computer)
   end
 
-  def user_forfeit?
+  def play_again?
     answer = nil
-    message = last_winner == human ? "" : " after that humiliating defeat"
     loop do
-      puts "Would you like to continue#{message}? (y/n)"
+      puts "Would you like to continue? (y/n)"
       answer = gets.chomp.downcase
       break if %w(y n).include?(answer)
       puts "Sorry, must be y or n."
     end
-    answer == 'n'
+    answer == 'y'
   end
 
   # display welcome message
@@ -267,7 +266,7 @@ class TTTGame
   # display the scoreboard
   # display the board
   # each player takes their turn until the round is completed
-  # if either player has the winning number of points, 
+  # if either player has the winning number of points,
   #  end the game and display champion
   # otherwise
   #   if the player lost the round, ask if they would like to forfeit
@@ -280,6 +279,7 @@ class TTTGame
     loop do
       play_round
       break if game_over?
+      break unless play_again?
       reset
       display_play_again_message
     end
@@ -290,6 +290,7 @@ end
 def play_round
   display_board
   player_move
+  update_scores
   display_result
 end
 
