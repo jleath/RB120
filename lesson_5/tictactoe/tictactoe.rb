@@ -1,4 +1,3 @@
-require 'pry'
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
@@ -9,6 +8,8 @@ class Board
     reset
   end
 
+  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/MethodLength
   def draw
     puts "     |     |"
     puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}"
@@ -22,12 +23,14 @@ class Board
     puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}"
     puts "     |     |"
   end
+  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/MethodLength
 
   def []=(key, marker)
     @squares[key].marker = marker
   end
 
-  def unmarked_keys 
+  def unmarked_keys
     @squares.keys.select { |key| @squares[key].unmarked? }
   end
 
@@ -106,6 +109,15 @@ class TTTGame
     @curr_marker = FIRST_TO_MOVE
   end
 
+  def play
+    clear_screen
+    display_welcome_message
+    main_game
+    display_goodbye_message
+  end
+
+  private
+
   def display_welcome_message
     puts "Welcome to Tic Tac Toe!"
     puts ""
@@ -115,7 +127,7 @@ class TTTGame
     system('clear') || system('cls')
   end
 
-  def display_board()
+  def display_board
     puts "You're a #{human.marker}. Computer is a #{computer.marker}."
     puts ""
     board.draw
@@ -156,7 +168,7 @@ class TTTGame
       puts "It's a tie!"
     end
   end
-  
+
   def display_goodbye_message
     puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
@@ -188,11 +200,7 @@ class TTTGame
   end
 
   def switch_player
-    if human_turn?
-      @curr_marker = COMPUTER_MARKER
-    else
-      @curr_marker = HUMAN_MARKER
-    end
+    @curr_marker = human_turn? ? COMPUTER_MARKER : HUMAN_MARKER
   end
 
   def current_player_moves
@@ -204,25 +212,23 @@ class TTTGame
     switch_player
   end
 
-  def play
-    clear_screen
-    display_welcome_message
+  def player_move
+    loop do
+      current_player_moves
+      break if board.someone_won? || board.full?
+      clear_screen_and_display_board if human_turn?
+    end
+  end
 
+  def main_game
     loop do
       display_board
-
-      loop do
-        current_player_moves
-        break if board.someone_won? || board.full?
-        clear_screen_and_display_board if human_turn?
-      end
+      player_move
       display_result
       break unless play_again?
-
       reset
       display_play_again_message
     end
-    display_goodbye_message
   end
 end
 
