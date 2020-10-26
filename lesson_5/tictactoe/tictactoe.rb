@@ -11,23 +11,19 @@ class Board
 
   def draw
     puts "     |     |"
-    puts "  #{get_square_at(1)}  |  #{get_square_at(2)}  |  #{get_square_at(3)}"
+    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}"
     puts "     |     |"
     puts "-----+-----+-----"
     puts "     |     |"
-    puts "  #{get_square_at(4)}  |  #{get_square_at(5)}  |  #{get_square_at(6)}"
+    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}"
     puts "     |     |"
     puts "-----+-----+-----"
     puts "     |     |"
-    puts "  #{get_square_at(7)}  |  #{get_square_at(8)}  |  #{get_square_at(9)}"
+    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}"
     puts "     |     |"
   end
 
-  def get_square_at(key)
-    @squares[key]
-  end
-
-  def set_square_at(key, marker)
+  def []=(key, marker)
     @squares[key].marker = marker
   end
 
@@ -43,18 +39,12 @@ class Board
     !!winning_marker
   end
 
-  def count_markers(markers, search_marker)
-    markers.count(search_marker)
-  end
-
   # returns winning marker or nil
   def winning_marker
     WINNING_LINES.each do |line|
-      markers = @squares.values_at(*line).map(&:marker)
-      if markers.count(TTTGame::HUMAN_MARKER) == 3
-        return TTTGame::HUMAN_MARKER
-      elsif markers.count(TTTGame::COMPUTER_MARKER) == 3
-        return TTTGame::COMPUTER_MARKER
+      squares = @squares.values_at(*line)
+      if three_identical_squares?(squares)
+        return squares.first.marker
       end
     end
     nil
@@ -62,6 +52,14 @@ class Board
 
   def reset
     (1..9).each { |key| @squares[key] = Square.new }
+  end
+
+  private
+
+  def three_identical_squares?(squares)
+    markers = squares.select(&:marked?).collect(&:marker)
+    return false if markers.size != 3
+    markers.min == markers.max
   end
 end
 
@@ -75,6 +73,10 @@ class Square
 
   def to_s
     @marker
+  end
+
+  def marked?
+    !unmarked?
   end
 
   def unmarked?
@@ -132,11 +134,12 @@ class TTTGame
 
       puts "Sorry, that's not a valid choice."
     end
-    board.set_square_at(square, human.marker)
+    board[square] = human.marker
   end
 
   def computer_moves
-    board.set_square_at(board.unmarked_keys.sample, computer.marker)
+    square = board.unmarked_keys.sample
+    board[square] = computer.marker
   end
 
   def display_result
