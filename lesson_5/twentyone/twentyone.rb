@@ -150,9 +150,19 @@ class Game
     IO.clear_screen
     deal_cards
     show_initial_cards
-    player_turn
-    dealer_turn
+    take_turns
     show_result
+  end
+
+  def take_turns
+    return if game_over?
+    player_turn
+    return if game_over?
+    dealer_turn
+  end
+
+  def game_over?
+    @player.hand.busted? || @player.hand.blackjack? || @dealer.hand.blackjack?
   end
 
   def deal_cards
