@@ -47,7 +47,6 @@ class FireworksAnimation
   WIDTH = 21
   REFRESH = 0.1
   FRAMES = 40
-  NUM_FIREWORKS = 15
   GEN_CHANCE = 65
 
   def self.display(message)
