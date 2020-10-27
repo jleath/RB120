@@ -134,6 +134,7 @@ end
 
 class Computer < Player
   AI_FAILURE_RATE = 10
+  START_SQUARE = 5
 
   def choose_square(board)
     thinking_sequence
@@ -143,6 +144,8 @@ class Computer < Player
       threat_square = detect_threat(board)
       return threat_square unless threat_square.nil?
     end
+    unmarked_keys = board.unmarked_keys
+    return START_SQUARE if unmarked_keys.include?(START_SQUARE)
     board.unmarked_keys.sample
   end
 
