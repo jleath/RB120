@@ -14,25 +14,6 @@ class Board
     reset
   end
 
-  # TODO: Get rid of this testing code
-  def self.tie_board
-    board = Board.new
-    board.set_to_tie_state
-    board
-  end
-
-  # TODO: Get rid of this testing code
-  def set_to_tie_state
-    @squares[1].marker = 'X'
-    @squares[2].marker = 'O'
-    @squares[3].marker = 'X'
-    @squares[4].marker = 'O'
-    @squares[5].marker = 'X'
-    @squares[6].marker = 'O'
-    @squares[7].marker = 'O'
-    @squares[9].marker = 'O'
-  end
-
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
   def draw
@@ -71,14 +52,9 @@ class Board
     !!winning_line
   end
 
-  # returns winning line
   def winning_line
-    WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if three_identical_squares?(squares)
-        return squares
-      end
-    end
+    lines = WINNING_LINES.map { |line| @squares.values_at(*line) }
+    lines.each { |line| return line if three_identical_squares?(line) }
     nil
   end
 
@@ -157,6 +133,56 @@ class Human < Player
 end
 
 class Computer < Player
+  AI_FAILURE_RATE = 10
+
+  def choose_square(board)
+    thinking_sequence
+    if rand(100) > AI_FAILURE_RATE
+      opportunity_square = detect_opportunity(board)
+      return opportunity_square unless opportunity_square.nil?
+      threat_square = detect_threat(board)
+      return threat_square unless threat_square.nil?
+    end
+    board.unmarked_keys.sample
+  end
+
+  private
+
+  def detect_pattern(board, pattern)
+    possible_lines = Board::WINNING_LINES
+    possible_lines.each do |squares|
+      markers = squares.map { |index| board[index].marker }
+      if matches_pattern?(markers, pattern)
+        return squares[markers.find_index(Square::INITIAL_MARKER)]
+      end
+    end
+    nil
+  end
+
+  def detect_opportunity(board)
+    pattern = { Square::INITIAL_MARKER => 1, marker => 2 }
+    detect_pattern(board, pattern)
+  end
+
+  def detect_threat(board)
+    pattern = { Square::INITIAL_MARKER => 1, marker => 0 }
+    detect_pattern(board, pattern)
+  end
+
+  def matches_pattern?(markers, pattern)
+    pattern.each do |key, value|
+      return false if markers.count(key) != value
+    end
+    true
+  end
+
+  def thinking_sequence
+    TTTInputOutput.display("The computer is thinking", newline: false)
+    3.times do
+      print('.')
+      sleep(0.35)
+    end
+  end
 end
 
 class Scoreboard
@@ -188,15 +214,14 @@ class TTTGame
   COMPUTER_MARKER = 'O'
   FIRST_TO_MOVE = HUMAN_MARKER
   SCORE_LIMIT = 2
-  FORCE_TIE = true
 
   attr_reader :board, :human, :computer
 
   def initialize
-    @board = FORCE_TIE ? Board.tie_board : Board.new
+    @board = Board.new
     @human = Human.new(HUMAN_MARKER, 'Player')
-    @computer = Player.new(COMPUTER_MARKER, 'Computer')
-    @curr_marker = FIRST_TO_MOVE
+    @computer = Computer.new(COMPUTER_MARKER, 'Computer')
+    @curr_player = human
   end
 
   def play
@@ -226,26 +251,6 @@ class TTTGame
   def clear_screen_and_display_board
     TTTInputOutput.clear_screen
     display_board
-  end
-
-  def human_moves
-    TTTInputOutput.display("#{human.name}'s turn")
-    square = human.choose_square(board)
-    board[square] = human.marker
-  end
-
-  def display_thinking_sequence
-    TTTInputOutput.display("The computer is thinking", newline: false)
-    3.times do
-      print('.')
-      sleep(0.35)
-    end
-  end
-
-  def computer_moves
-    display_thinking_sequence
-    square = board.unmarked_keys.sample
-    board[square] = computer.marker
   end
 
   def update_scores
@@ -307,19 +312,17 @@ class TTTGame
   end
 
   def human_turn?
-    @curr_marker == HUMAN_MARKER
+    @curr_player == human
   end
 
   def switch_player
-    @curr_marker = human_turn? ? COMPUTER_MARKER : HUMAN_MARKER
+    @curr_player = human_turn? ? computer : human
   end
 
   def current_player_moves
-    if human_turn?
-      human_moves
-    else
-      computer_moves
-    end
+    TTTInputOutput.display("#{@curr_player.name}'s turn")
+    square = @curr_player.choose_square(board)
+    board[square] = @curr_player.marker
     switch_player
   end
 
