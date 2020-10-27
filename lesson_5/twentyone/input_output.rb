@@ -10,7 +10,7 @@ class IO
   end
 
   def self.choose_from_options(options)
-    options_str = self.joinor(options)
+    options_str = joinor(options)
     answer = nil
     loop do
       puts "Would you like to #{options_str}? (Type #{options_str}) "
@@ -20,8 +20,6 @@ class IO
     end
     answer
   end
-
-  private
 
   def self.joinor(arr, delim = ', ', join_word = 'or')
     arr = arr[0..-1]
