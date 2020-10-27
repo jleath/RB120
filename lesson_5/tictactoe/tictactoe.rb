@@ -4,10 +4,32 @@ class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
                   [[1, 5, 9], [3, 5, 7]]              # diagonals
+  ANIMATION_REPEATS = 4
+  ANIMATION_REFRESH = 0.1 / 1.5
+  SQUARE_ANIMATION = ['-', '\\', '|', '/']
 
   def initialize
     @squares = {}
     reset
+  end
+
+  # TODO: Get rid of this testing code
+  def self.tie_board
+    board = Board.new
+    board.set_to_tie_state
+    board
+  end
+
+  # TODO: Get rid of this testing code
+  def set_to_tie_state
+    @squares[1].marker = 'X'
+    @squares[2].marker = 'O'
+    @squares[3].marker = 'X'
+    @squares[4].marker = 'O'
+    @squares[5].marker = 'X'
+    @squares[6].marker = 'O'
+    @squares[7].marker = 'O'
+    @squares[9].marker = 'O'
   end
 
   # rubocop:disable Metrics/AbcSize
@@ -32,6 +54,10 @@ class Board
     @squares[key].marker = marker
   end
 
+  def [](key)
+    @squares[key]
+  end
+
   def unmarked_keys
     @squares.keys.select { |key| @squares[key].unmarked? }
   end
@@ -41,18 +67,29 @@ class Board
   end
 
   def someone_won?
-    !!winning_marker
+    !!winning_line
   end
 
-  # returns winning marker or nil
-  def winning_marker
+  # returns winning line
+  def winning_line
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
       if three_identical_squares?(squares)
-        return squares.first.marker
+        return squares
       end
     end
     nil
+  end
+
+  def animate_tie(human_score, computer_score)
+    square_order = [1, 2, 3, 6, 9, 8, 7, 4, 5]
+    @squares.values_at(*square_order).each do |square|
+      animate_squares([square], human_score, computer_score, repeats: 1)
+    end
+  end
+
+  def animate_win(human_score, computer_score)
+    animate_squares(winning_line, human_score, computer_score)
   end
 
   def reset
@@ -65,6 +102,18 @@ class Board
     markers = squares.select(&:marked?).collect(&:marker)
     return false if markers.size != 3
     markers.min == markers.max
+  end
+
+  def animate_squares(squares, score1, score2, repeats: ANIMATION_REPEATS)
+    frames = SQUARE_ANIMATION.size
+    (frames * repeats).times do |frame|
+      sleep(ANIMATION_REFRESH)
+      squares.each { |square| square.marker = SQUARE_ANIMATION[frame % frames] }
+      system('clear') || system('cls')
+      Scoreboard.display(score1, score2)
+      draw
+    end
+    squares.each { |square| square.marker = Square::INITIAL_MARKER }
   end
 end
 
@@ -99,16 +148,41 @@ class Player
   end
 end
 
+class Scoreboard
+  def self.display(player_score, computer_score)
+    winner_indicator = get_winner_indicator(player_score, computer_score)
+    puts(' TIC   TAC   TOE')
+    puts('------------------')
+    puts('player    computer')
+    puts("  #{player_score}    #{winner_indicator}    #{computer_score}")
+  end
+
+  RIGHT_INDICATOR = '-|>'
+  LEFT_INDICATOR = '<|-'
+  TIE_INDICATOR = '-|-'
+
+  def self.get_winner_indicator(left_score, right_score)
+    if left_score < right_score
+      RIGHT_INDICATOR
+    elsif left_score > right_score
+      LEFT_INDICATOR
+    else
+      TIE_INDICATOR
+    end
+  end
+end
+
 class TTTGame
   HUMAN_MARKER = 'X'
   COMPUTER_MARKER = 'O'
   FIRST_TO_MOVE = HUMAN_MARKER
-  SCORE_LIMIT = 1
+  SCORE_LIMIT = 2
+  FORCE_TIE = true
 
   attr_reader :board, :human, :computer
 
   def initialize
-    @board = Board.new
+    @board = FORCE_TIE ? Board.tie_board : Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
     @curr_marker = FIRST_TO_MOVE
@@ -142,26 +216,8 @@ class TTTGame
     system('clear') || system('cls')
   end
 
-  def get_winner_indicator(left_score, right_score)
-    if left_score < right_score
-      '-|>'
-    elsif left_score > right_score
-      '<|-'
-    else
-      '-|-'
-    end
-  end
-
-  def display_scoreboard
-    winner_indicator = get_winner_indicator(human.score, computer.score)
-    puts(' TIC   TAC   TOE')
-    puts('------------------')
-    puts('player    computer')
-    puts("  #{human.score}    #{winner_indicator}    #{computer.score}")
-  end
-
   def display_board
-    display_scoreboard
+    Scoreboard.display(human.score, computer.score)
     board.draw
     puts ""
   end
@@ -193,24 +249,52 @@ class TTTGame
     board[square] = human.marker
   end
 
+  def display_thinking_sequence
+    display("The computer is thinking", newline: false)
+    3.times do
+      print('.')
+      sleep(0.35)
+    end
+  end
+
   def computer_moves
+    display_thinking_sequence
     square = board.unmarked_keys.sample
     board[square] = computer.marker
   end
 
   def update_scores
-    case board.winning_marker
+    winning_line = board.winning_line
+    return if winning_line.nil?
+
+    case board.winning_line.first.marker
     when human.marker then human.score += 1
     when computer.marker then computer.score += 1
     end
   end
 
+  def display_tie
+    board.animate_tie(human.score, computer.score)
+    clear_screen
+    Scoreboard.display(human.score, computer.score)
+    display("It's a tie!")
+  end
+
+  def display_win(winning_line)
+    winning_marker = winning_line.first.marker
+    board.animate_win(human.score, computer.score)
+    clear_screen
+    win_msg = winning_marker == human.marker ? "You won!" : "The computer won!"
+    Scoreboard.display(human.score, computer.score)
+    display(win_msg)
+  end
+
   def display_result
-    clear_screen_and_display_board
-    case board.winning_marker
-    when human.marker then display("You won!")
-    when computer.marker then display("Computer won!")
-    else display("It's a tie!")
+    winning_line = board.winning_line
+    if winning_line.nil?
+      display_tie
+    else
+      display_win(winning_line)
     end
   end
 
@@ -237,11 +321,6 @@ class TTTGame
     clear_screen
   end
 
-  def display_play_again_message
-    display("Let's play again!")
-    puts ""
-  end
-
   def human_turn?
     @curr_marker == HUMAN_MARKER
   end
@@ -265,7 +344,7 @@ class TTTGame
     loop do
       current_player_moves
       break if board.someone_won? || board.full?
-      clear_screen_and_display_board if human_turn?
+      clear_screen_and_display_board
     end
   end
 
@@ -291,7 +370,6 @@ class TTTGame
       break if game_over?
       break unless play_again?
       reset_board
-      display_play_again_message
     end
     display_champion
   end
