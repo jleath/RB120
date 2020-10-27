@@ -1,4 +1,5 @@
 load 'fireworks.rb'
+load 'ttt_input_output.rb'
 
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
@@ -109,7 +110,7 @@ class Board
     (frames * repeats).times do |frame|
       sleep(ANIMATION_REFRESH)
       squares.each { |square| square.marker = SQUARE_ANIMATION[frame % frames] }
-      system('clear') || system('cls')
+      TTTInputOutput.clear_screen
       Scoreboard.display(score1, score2)
       draw
     end
@@ -139,13 +140,23 @@ class Square
 end
 
 class Player
-  attr_reader :marker
+  attr_reader :marker, :name
   attr_accessor :score
 
-  def initialize(marker)
+  def initialize(marker, name)
     @marker = marker
     @score = 0
+    @name = name
   end
+end
+
+class Human < Player
+  def choose_square(board)
+    TTTInputOutput.choose_from_options(board.unmarked_keys)
+  end
+end
+
+class Computer < Player
 end
 
 class Scoreboard
@@ -183,13 +194,13 @@ class TTTGame
 
   def initialize
     @board = FORCE_TIE ? Board.tie_board : Board.new
-    @human = Player.new(HUMAN_MARKER)
-    @computer = Player.new(COMPUTER_MARKER)
+    @human = Human.new(HUMAN_MARKER, 'Player')
+    @computer = Player.new(COMPUTER_MARKER, 'Computer')
     @curr_marker = FIRST_TO_MOVE
   end
 
   def play
-    clear_screen
+    TTTInputOutput.clear_screen
     display_welcome_message
     main_game
     display_goodbye_message
@@ -197,23 +208,13 @@ class TTTGame
 
   private
 
-  def display(msg, newline: true)
-    if newline
-      puts "> #{msg}"
-    else
-      print "> #{msg}"
-    end
-  end
-
   def display_welcome_message
-    display("Welcome to TicTacToe!")
-    display("The first player to win #{SCORE_LIMIT} rounds is the champion.")
-    display("Press Enter when you are ready to begin!", newline: false)
+    TTTInputOutput.display("Welcome to TicTacToe!")
+    TTTInputOutput.display("The first player to win #{SCORE_LIMIT}" \
+                           " rounds is the champion.")
+    TTTInputOutput.display("Press Enter when you are ready to begin!",
+                           newline: false)
     gets
-  end
-
-  def clear_screen
-    system('clear') || system('cls')
   end
 
   def display_board
@@ -223,34 +224,18 @@ class TTTGame
   end
 
   def clear_screen_and_display_board
-    clear_screen
+    TTTInputOutput.clear_screen
     display_board
   end
 
-  def joinor(arr, delim = ', ', join_word = 'or')
-    arr = arr[0..-1]
-    if arr.size <= 2
-      arr.join(" #{join_word} ")
-    else
-      arr[-1] = "#{join_word} #{arr[-1]}"
-      arr.join(delim)
-    end
-  end
-
   def human_moves
-    square = nil
-    loop do
-      display("Choose a square (#{joinor(board.unmarked_keys)})")
-      square = gets.chomp.to_i
-      break if board.unmarked_keys.include?(square)
-
-      display("Sorry, that is not a valid choice. Please try again.")
-    end
+    TTTInputOutput.display("#{human.name}'s turn")
+    square = human.choose_square(board)
     board[square] = human.marker
   end
 
   def display_thinking_sequence
-    display("The computer is thinking", newline: false)
+    TTTInputOutput.display("The computer is thinking", newline: false)
     3.times do
       print('.')
       sleep(0.35)
@@ -275,18 +260,18 @@ class TTTGame
 
   def display_tie
     board.animate_tie(human.score, computer.score)
-    clear_screen
+    TTTInputOutput.clear_screen
     Scoreboard.display(human.score, computer.score)
-    display("It's a tie!")
+    TTTInputOutput.display("It's a tie!")
   end
 
   def display_win(winning_line)
     winning_marker = winning_line.first.marker
     board.animate_win(human.score, computer.score)
-    clear_screen
+    TTTInputOutput.clear_screen
     win_msg = winning_marker == human.marker ? "You won!" : "The computer won!"
     Scoreboard.display(human.score, computer.score)
-    display(win_msg)
+    TTTInputOutput.display(win_msg)
   end
 
   def display_result
@@ -304,21 +289,21 @@ class TTTGame
 
   def display_champion
     if at_score_limit?(human)
-      clear_screen
+      TTTInputOutput.clear_screen
       FireworksAnimation.display("  Congratulations!!\nYou are the champion!")
     else
-      display("You lose! The computer is the champion!")
+      TTTInputOutput.display("You lose! The computer is the champion!")
     end
   end
 
   def display_goodbye_message
-    display("Thanks for playing Tic Tac Toe! Goodbye!")
+    TTTInputOutput.display("Thanks for playing Tic Tac Toe! Goodbye!")
   end
 
   def reset_board
     board.reset
     @curr_marker = FIRST_TO_MOVE
-    clear_screen
+    TTTInputOutput.clear_screen
   end
 
   def human_turn?
@@ -331,10 +316,8 @@ class TTTGame
 
   def current_player_moves
     if human_turn?
-      display("Player's turn")
       human_moves
     else
-      display("Computer's turn")
       computer_moves
     end
     switch_player
@@ -353,18 +336,11 @@ class TTTGame
   end
 
   def play_again?
-    answer = nil
-    loop do
-      display("Would you like to continue? (y/n): ", newline: false)
-      answer = gets.chomp.downcase
-      break if %w(y n).include?(answer)
-      display("Sorry, must be y or n.")
-    end
-    answer == 'y'
+    TTTInputOutput.get_yes_no("Would you like to continue?")
   end
 
   def main_game
-    clear_screen
+    TTTInputOutput.clear_screen
     loop do
       play_round
       break if game_over?
